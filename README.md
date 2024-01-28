@@ -79,4 +79,4 @@ We provide fine-tuned models on CIFAR, which can be found [here]().
 
 ### 7. License
 
-Please refer to [License](./LICENSE.md)
+Please refer to [License](./LICENSE)
