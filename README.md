@@ -8,11 +8,11 @@ Vision transformer (ViT) demonstrates significant potential in image classificat
 To this end, this paper proposes to address this data ineﬀiciency by introducing multi-scale tokens, which provides the image prior of multiple scales and enables learning scale-invariant features. Our model generates tokens of varying scales from images using different patch sizes, where each token of the larger scale is linked to a set of tokens of other smaller scales based on spatial correspondences. Through a regional cross-scale interaction module, tokens of different scales fuse regionally to enhance the learning of local structures.Additionally, we implement a data augmentation schedule to refine training. Extensive experiments on image classification demonstrate our approach surpasses DeiT and other multi-scale transformer methods on small-scale datasets.
 
 <div align="center">
-  <img src="./images/dems_plot1.jpg" width="450px" />
+  <img src="./images/dems_plot1.jpg" width="600px" />
 </div>
 
 <div align="center">
-  <img src="./images/dems_plot2.jpg" width="450px" />
+  <img src="./images/dems_plot2.jpg" width="600px" />
 </div>
 
 ### 2. Requirements
