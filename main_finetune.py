@@ -1,31 +1,17 @@
 from __future__ import print_function
-import math
-from tkinter.dnd import dnd_start
 import os
-import time
-import numpy as np
-
+import argparse
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import torch.multiprocessing as mp
-from torch.utils.tensorboard import SummaryWriter
-import torchvision
-import torchvision.transforms as transforms
 from timm.data.mixup import Mixup
-from timm.utils import accuracy
-import timm.optim.optim_factory as optim_factory
-from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
+from timm.loss import SoftTargetCrossEntropy
 
 from transforms import build_dataset
-from utils import copy_files, ExponentialMovingAverage, Logger ,AverageMeter ,console_logger, save_on_master, param_groups_lrd
-from utils import cosine_scheduler_epoch, transform_cosine_scheduler, mask_cosine_scheduler, GaussianBlur
+from utils import copy_files, Logger ,console_logger, save_on_master, cosine_scheduler_epoch
 from engine import train, test
 from models.dems import DEMS_ViT
-# from models.std_vit import ViT
 
 def main(args):
     ngpus_per_node = torch.cuda.device_count()
@@ -92,6 +78,12 @@ def main_worker(gpu, ngpus_per_node, args):
         #net = nn.SyncBatchNorm.convert_sync_batchnorm(net)
         net = nn.parallel.DistributedDataParallel(net, device_ids=[args.rank])
 
+    sampler_train = torch.utils.data.DistributedSampler(trainset) if args.distributed else None
+    sampler_test = torch.utils.data.DistributedSampler(testset) if args.distributed else None
+
+    trainloader = torch.utils.data.DataLoader(trainset, sampler=sampler_train,batch_size=bs_per_gpu, pin_memory=False,shuffle=(sampler_train is None), drop_last=True, num_workers=args.num_workers, persistent_workers = True)       
+    testloader = torch.utils.data.DataLoader(testset, sampler=sampler_test,batch_size=bs_per_gpu, pin_memory=False, shuffle=False, drop_last=True, num_workers=args.num_workers, persistent_workers = True)
+    
     if mixup_fn is not None:
         criterion = SoftTargetCrossEntropy()
     else:
@@ -118,11 +110,6 @@ def main_worker(gpu, ngpus_per_node, args):
                 loc = 'cuda:{}'.format(args.rank)
                 checkpoint = torch.load(args.resume, map_location=loc)
             args.start_epoch = checkpoint['epoch']
-            # old_dict = checkpoint['model']
-            # state_dict_new = dict()
-            # for key, val in old_dict.items():
-            #     state_dict_new[key[7:]] = val
-            # net.load_state_dict(state_dict_new)
             
             net.load_state_dict(checkpoint['model'])
             optimizer.load_state_dict(checkpoint['optimizer'])
@@ -137,9 +124,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
         state_dict_old = torch.load(args.pretrained_weight, map_location=f"cuda:{args.rank}")
         state_dict_new = dict()
-        #print(state_dict_old['model_ema'].keys())
         for key, val in state_dict_old['model'].items():
-            #state_dict_new[key] = val
             state_dict_new[key] = val
         
         missing_keys, unexpected_keys = net.load_state_dict(state_dict_new, strict = False)
@@ -200,18 +185,19 @@ def get_args_parser():
     parser.add_argument('--model', default='dems_small', choices=['dems_tiny', 'dems_small'],
                         type=str, help='Name of model to train')
           
-    parser.add_argument('--data_path', default='', type=str, help='dataset path')
+    parser.add_argument('--data_path', default='/path/dataset/', type=str, help='dataset path')
     parser.add_argument('--dataset', default='CIFAR100', choices=['CIFAR10', 'CIFAR100', 'CALTECH101', 'FASHIONMNIST', 'EMNIST'],
                         type=str, help='dataset')
 
-    parser.add_argument('--output_dir', default='', help='path where to save')
+    parser.add_argument('--output_dir', default='./out', help='path where to save')
     parser.add_argument('--init_method', default='tcp://localhost:17888')
 
-    parser.add_argument('--pretrained_weight', default='', help='path where to load pretrained weight')
+    parser.add_argument('--pretrained_weight', default='./checkpoint/checkpoint.pth', help='path where to load pretrained weight')
     
     return parser
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser('training and evaluation script', parents=[get_args_parser()])
     args_ = parser.parse_args()
     if args_.model == 'dems_tiny':
         from config.finetune.dems_tiny_finetune import dems_tiny_finetune

@@ -6,27 +6,17 @@
     - progress_bar: progress bar mimic xlua.progress.
 '''
 import os
-import PIL
-import sys
 import time
-import math
 import shutil
-import scipy
 import torch
 import torch.nn as nn
 import torch.nn.init as init
-import torch.distributed as dist
 import logging
-from PIL import ImageFilter, Image
-import random
 import numpy as np
-from torch.utils.data import Dataset
 from torch.utils.tensorboard import SummaryWriter
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
-from transform import ComposeWithHFlip, RandomHorizontalFlip
-from torchvision.datasets.utils import download_url, list_dir, check_integrity, extract_archive, verify_str_arg
-
-from transforms import GaussianBlur_deit, Solarization, gray_scale, GaussianBlur
+# from transforms import ComposeWithHFlip, RandomHorizontalFlip
+# from transforms import GaussianBlur_deit, Solarization, gray_scale, GaussianBlur
 
 class Logger(SummaryWriter):
     def __init__(self, log_root='./', name='', logger_name=''):
@@ -48,7 +38,6 @@ def console_logger(log_root, logger_name) -> logging.Logger:
 
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.INFO)
-    # formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     formatter = logging.Formatter('%(asctime)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
     handler1 = logging.FileHandler(log_path)
@@ -77,154 +66,6 @@ def init_params(net):
             init.normal(m.weight, std=1e-3)
             if m.bias:
                 init.constant(m.bias, 0)
-
-
-try:
-	_, term_width = os.popen('stty size', 'r').read().split()
-except:
-	term_width = 80
-term_width = int(term_width)
-
-TOTAL_BAR_LENGTH = 65.
-last_time = time.time()
-begin_time = last_time
-def progress_bar(current, total, msg=None):
-    global last_time, begin_time
-    if current == 0:
-        begin_time = time.time()  # Reset for new bar.
-
-    cur_len = int(TOTAL_BAR_LENGTH*current/total)
-    rest_len = int(TOTAL_BAR_LENGTH - cur_len) - 1
-
-    sys.stdout.write(' [')
-    for i in range(cur_len):
-        sys.stdout.write('=')
-    sys.stdout.write('>')
-    for i in range(rest_len):
-        sys.stdout.write('.')
-    sys.stdout.write(']')
-
-    cur_time = time.time()
-    step_time = cur_time - last_time
-    last_time = cur_time
-    tot_time = cur_time - begin_time
-
-    L = []
-    L.append('  Step: %s' % format_time(step_time))
-    L.append(' | Tot: %s' % format_time(tot_time))
-    if msg:
-        L.append(' | ' + msg)
-
-    msg = ''.join(L)
-    sys.stdout.write(msg)
-    for i in range(term_width-int(TOTAL_BAR_LENGTH)-len(msg)-3):
-        sys.stdout.write(' ')
-
-    # Go back to the center of the bar.
-    for i in range(term_width-int(TOTAL_BAR_LENGTH/2)+2):
-        sys.stdout.write('\b')
-    sys.stdout.write(' %d/%d ' % (current+1, total))
-
-    if current < total-1:
-        sys.stdout.write('\r')
-    else:
-        sys.stdout.write('\n')
-    sys.stdout.flush()
-
-def format_time(seconds):
-    days = int(seconds / 3600/24)
-    seconds = seconds - days*3600*24
-    hours = int(seconds / 3600)
-    seconds = seconds - hours*3600
-    minutes = int(seconds / 60)
-    seconds = seconds - minutes*60
-    secondsf = int(seconds)
-    seconds = seconds - secondsf
-    millis = int(seconds*1000)
-
-    f = ''
-    i = 1
-    if days > 0:
-        f += str(days) + 'D'
-        i += 1
-    if hours > 0 and i <= 2:
-        f += str(hours) + 'h'
-        i += 1
-    if minutes > 0 and i <= 2:
-        f += str(minutes) + 'm'
-        i += 1
-    if secondsf > 0 and i <= 2:
-        f += str(secondsf) + 's'
-        i += 1
-    if millis > 0 and i <= 2:
-        f += str(millis) + 'ms'
-        i += 1
-    if f == '':
-        f = '0ms'
-    return f
-
-def get_layer_id_for_vit(name, num_layers):
-    """
-    Assign a parameter with its layer id
-    Following BEiT: https://github.com/microsoft/unilm/blob/master/beit/optim_factory.py#L33
-    """
-    if name in ['cls_token', 'pos_embed']:
-        return 0
-    elif name.startswith('patch_embed'):
-        return 0
-    elif name.startswith('blocks'):
-        return int(name.split('.')[1]) + 1
-    else:
-        return num_layers
-
-def param_groups_lrd(model, weight_decay=0.05, no_weight_decay_list=[], layer_decay=.75):
-    """
-    Parameter groups for layer-wise lr decay
-    Following BEiT: https://github.com/microsoft/unilm/blob/master/beit/optim_factory.py#L58
-    """
-    param_group_names = {}
-    param_groups = {}
-
-
-    num_layers = len(model.module.blocks) + 1
-
-    layer_scales = list(layer_decay ** (num_layers - i) for i in range(num_layers + 1))
-
-    for n, p in model.named_parameters():
-        if not p.requires_grad:
-            continue
-
-        # no decay: all 1D parameters and model specific ones
-        if p.ndim == 1 or n in no_weight_decay_list:
-            g_decay = "no_decay"
-            this_decay = 0.
-        else:
-            g_decay = "decay"
-            this_decay = weight_decay
-            
-        layer_id = get_layer_id_for_vit(n, num_layers)
-        group_name = "layer_%d_%s" % (layer_id, g_decay)
-
-        if group_name not in param_group_names:
-            this_scale = layer_scales[layer_id]
-
-            param_group_names[group_name] = {
-                "lr_scale": this_scale,
-                "weight_decay": this_decay,
-                "params": [],
-            }
-            param_groups[group_name] = {
-                "lr_scale": this_scale,
-                "weight_decay": this_decay,
-                "params": [],
-            }
-
-        param_group_names[group_name]["params"].append(n)
-        param_groups[group_name]["params"].append(p)
-
-    # print("parameter groups: \n%s" % json.dumps(param_group_names, indent=2))
-
-    return list(param_groups.values())
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""

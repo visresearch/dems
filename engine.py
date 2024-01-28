@@ -1,5 +1,6 @@
 import time
 import torch
+from timm.utils import accuracy
 from utils import AverageMeter
 
 def train(epoch,net,scaler,trainloader,criterion,optimizer,mixup_fn,loggers,args):

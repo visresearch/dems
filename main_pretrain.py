@@ -1,32 +1,16 @@
 from __future__ import print_function
-import math
-from tkinter.dnd import dnd_start
-from sklearn.model_selection import StratifiedShuffleSplit
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import torch.multiprocessing as mp
-from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import Sampler
-import torchvision
-import torchvision.transforms as transforms
 from timm.data.mixup import Mixup
-from timm.utils import accuracy, ModelEma, get_state_dict
-import timm.optim.optim_factory as optim_factory
-from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
+from timm.loss import SoftTargetCrossEntropy
 
 import argparse
-import PIL
 import os
-import time
-import numpy as np
-
 from transforms import build_dataset, new_data_aug_generator
-from utils import copy_files, Logger ,AverageMeter ,console_logger, save_on_master
-from utils import cosine_scheduler_epoch, transform_cosine_scheduler, mask_cosine_scheduler, NativeScalerWithGradNormCount
+from utils import copy_files, Logger ,console_logger, save_on_master
+from utils import cosine_scheduler_epoch, transform_cosine_scheduler, NativeScalerWithGradNormCount
 from engine import train, test
 from models.dems import DEMS_ViT
 
@@ -62,12 +46,6 @@ def main_worker(gpu, ngpus_per_node, args):
     trainset, args.n_classes = build_dataset(args, is_train='train')
     testset, _ = build_dataset(args, is_train='test')
 
-    sampler_train = torch.utils.data.DistributedSampler(trainset) if args.distributed else None
-    sampler_test = torch.utils.data.DistributedSampler(testset) if args.distributed else None
-
-    trainloader = torch.utils.data.DataLoader(trainset, sampler=sampler_train,batch_size=bs_per_gpu, pin_memory=False,shuffle=(sampler_train is None), drop_last=True, num_workers=args.num_workers, persistent_workers = True)       
-    testloader = torch.utils.data.DataLoader(testset, sampler=sampler_test,batch_size=bs_per_gpu, pin_memory=False, shuffle=False, drop_last=True, num_workers=args.num_workers, persistent_workers = True)
-
     mixup_fn = None
     mixup_active = args.mixup > 0 or args.cutmix > 0. or args.cutmix_minmax is not None
     if mixup_active:
@@ -101,6 +79,12 @@ def main_worker(gpu, ngpus_per_node, args):
         args.num_workers = int((args.num_workers + args.world_size - 1) / args.world_size) 
         # net = nn.SyncBatchNorm.convert_sync_batchnorm(net)
         net = nn.parallel.DistributedDataParallel(net, device_ids=[args.rank], broadcast_buffers=False)
+
+    sampler_train = torch.utils.data.DistributedSampler(trainset) if args.distributed else None
+    sampler_test = torch.utils.data.DistributedSampler(testset) if args.distributed else None
+
+    trainloader = torch.utils.data.DataLoader(trainset, sampler=sampler_train,batch_size=bs_per_gpu, pin_memory=False,shuffle=(sampler_train is None), drop_last=True, num_workers=args.num_workers, persistent_workers = True)       
+    testloader = torch.utils.data.DataLoader(testset, sampler=sampler_test,batch_size=bs_per_gpu, pin_memory=False, shuffle=False, drop_last=True, num_workers=args.num_workers, persistent_workers = True)
 
     if args.ThreeAugment:
         trainloader.dataset.transform = new_data_aug_generator(args)
@@ -193,11 +177,11 @@ def get_args_parser():
     parser.add_argument('--model', default='dems_small', choices=['dems_tiny', 'dems_small'],
                         type=str, help='Name of model to train')
           
-    parser.add_argument('--data_path', default='/path/to/CIFAR100', type=str, help='dataset path')
+    parser.add_argument('--data_path', default='/path/dataset/', type=str, help='dataset path')
     parser.add_argument('--dataset', default='CIFAR100', choices=['CIFAR10', 'CIFAR100', 'CALTECH101', 'FASHIONMNIST', 'EMNIST'],
                         type=str, help='dataset')
 
-    parser.add_argument('--output_dir', default='./', help='path where to save')
+    parser.add_argument('--output_dir', default='./out', help='path where to save')
     parser.add_argument('--init_method', default='tcp://localhost:17888')
     
     return parser

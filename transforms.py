@@ -1,8 +1,5 @@
-import random
-import numpy as np
+import os
 import PIL
-from PIL import ImageFilter, ImageOps
-
 import torch
 import torchvision
 import torchvision.transforms.functional as F
@@ -30,6 +27,8 @@ def build_dataset(args, is_train):
         
         dataset = torchvision.datasets.ImageFolder(root=root, transform=transform)
         nb_classes = 101
+    
+    return dataset, nb_classes
 
 def build_transform(args, is_train):
     if 'MNIST' in args.dataset:

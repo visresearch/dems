@@ -13,6 +13,9 @@ def dems_tiny_finetune():
     args.size = 32  # input size; 256 for large resolution images
     args.patch = 2  # patch size; 16 for 256 input size
 
+    args.merge_num = [64, 64]
+    args.merge_layer = [6, 10]
+
     args.warmup_epochs = 0
     args.min_lr = 1e-6
     args.weight_decay = 0.05
@@ -24,6 +27,7 @@ def dems_tiny_finetune():
     args.num_workers= 8
     args.init_method = 'tcp://localhost:17997'
 
+    args.save_mem = False
     args.resume = ''
     args.start_epoch = 0
 
@@ -36,6 +40,6 @@ def dems_tiny_finetune():
     args.mixup_switch_prob = 0.5
     args.mixup_mode = 'batch'
 
-    args.exclude_file_list = ['__pycache__', '.gitignore']
+    args.exclude_file_list = ['__pycache__', '.gitignore', 'out']
 
     return args

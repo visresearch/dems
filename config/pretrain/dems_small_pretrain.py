@@ -32,6 +32,7 @@ def dems_small_pretrain():
     args.num_workers= 8
     args.init_method = 'tcp://localhost:17997'
 
+    args.save_mem = False
     args.resume = ''
     args.start_epoch = 0
     args.saveckp_freq = 50
@@ -45,6 +46,6 @@ def dems_small_pretrain():
     args.mixup_switch_prob = 0.5
     args.mixup_mode = 'batch'
 
-    args.exclude_file_list = ['__pycache__', '.gitignore']
+    args.exclude_file_list = ['__pycache__', '.gitignore', 'out']
 
     return args
