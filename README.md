@@ -1,6 +1,5 @@
 ## Data-Efficient Multi-Scale Fusion Vision Transformer
 
-This repository includes official implementation and model weights of Data-Efficient Multi-Scale Fusion Vision Transformer.
 
 ### 1. Abstract
 
