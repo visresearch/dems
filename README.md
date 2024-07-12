@@ -75,4 +75,4 @@ We provide fine-tuned models on CIFAR, which can be found [here](https://drive.g
 
 ### 7. License
 
-This project is under the CC-BY-NC 4.0 license. See [LICENSE](./LICENSE.md) for details.
+This project is under the CC-BY-NC 4.0 license. See [LICENSE](./LICENSE) for details.
