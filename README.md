@@ -41,7 +41,7 @@ Run the following command to train DEMS-ViT-S on CIFAR100 for 800 epochs, with r
 
 ```shell script
 
-python main_pretrain --model dems_small --batch_size 256 --epochs 800 --dataset CIFAR100 --data_path /path/to/CIFAR100
+python main_pretrain.py --model dems_small --batch_size 256 --epochs 800 --dataset CIFAR100 --data_path /path/to/CIFAR100
 ```
 
 ### 5. Fine-tuning
@@ -51,7 +51,7 @@ Run the following command to finetune DEMS-ViT-S on CIFAR100 for 100 epochs:
 
 ```shell script
 
-python main_finetune --model dems_small --batch_size 256 --epochs 100 --dataset CIFAR100 --data_path /path/to/CIFAR100 --pretrained_weight /path/pretrained
+python main_finetune.py --model dems_small --batch_size 256 --epochs 100 --dataset CIFAR100 --data_path /path/to/CIFAR100 --pretrained_weight /path/pretrained
 ```
 
 ### 6. Main Results and Model Weights
