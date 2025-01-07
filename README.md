@@ -1,6 +1,8 @@
 ## Data-Efficient Multi-Scale Fusion Vision Transformer
 
-This repository includes official implementation and model weights of Data-Efficient Multi-Scale Fusion Vision Transformer.
+This repository includes official implementation and model weights of "Data-Efficient Multi-Scale Fusion Vision Transformer".
+
+[[Paper](https://www.sciencedirect.com/science/article/pii/S0031320324010562#d1e4715)]    [[BibTex](#Citation)]
 
 ### 1. Abstract
 
@@ -76,3 +78,14 @@ We provide fine-tuned models on CIFAR, which can be found [here](https://drive.g
 ### 7. License
 
 This project is under the CC-BY-NC 4.0 license. See [LICENSE](./LICENSE) for details.
+
+### Citation
+
+```bibtex
+@article{tang2025data,
+      title={Data-Efficient Multi-Scale Fusion Vision Transformer}, 
+      author={Tang, Hao and Liu, Dawei and Shen, Chengchao},
+      journal={Pattern Recognition},
+      year={2025}
+}
+```
